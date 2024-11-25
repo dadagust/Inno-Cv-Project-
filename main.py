@@ -4,7 +4,7 @@ from train_model import train_the_model
 
 if __name__ == '__main__':
     """
-        If you want to train a specific dataset,
+        If you want to train a model on a specific dataset,
         you need to change the class mapping in train_model.py
     """
     if os.path.exists("data.csv"):
