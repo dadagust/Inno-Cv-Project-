@@ -117,7 +117,7 @@ model = EmotionCNN().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-def train_canny_model(num_epochs):
+def train_canny(num_epochs):
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
