@@ -108,62 +108,57 @@ class EmotionClassifier(nn.Module):
 
 
 
-def real_time_emotion_detection(model, device, max_fps=10):
-    model.eval()
+def real_time_emotion_detection(model, device, max_fps=1):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Error: Camera not accessible.")
         return
 
     frame_delay = 1.0 / max_fps
-
+    emotion = "neutral"
+    start_time = time.time()
     while True:
-        start_time = time.time()
+
 
         ret, frame = cap.read()
         if not ret:
             print("Error: Frame capture failed.")
             break
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = detect_face(frame, gray)
-
-        if len(faces) == 0:
-            cv2.putText(frame, "No Face Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        else:
-            x, y, w, h = faces[0]
-            face_region = frame[y:y+h, x:x+w]
-
-            if canny:
-                edges = apply_canny(face_region)
-                edges_tensor = torch.tensor(edges, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device) / 255.0
-
-                with torch.no_grad():
-                    output = model(edges_tensor)
-                    predicted_label = torch.argmax(output).item()
-                    emotion = emotion_labels[predicted_label]
+        elapsed_time = time.time() - start_time
+        remaining_time = frame_delay - elapsed_time
+        if remaining_time < 0:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = detect_face(frame, gray)
+            if len(faces) == 0:
+                cv2.putText(frame, "No Face Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             else:
-                face_landmarks = get_face_landmarks(face_region, draw=False)
-                if len(face_landmarks) == 0:
-                    continue
-                if face_landmarks is None:
-                    cv2.putText(frame, "No Landmarks Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                x, y, w, h = faces[0]
+                face_region = frame[y:y+h, x:x+w]
+                if canny:
+                    edges = apply_canny(face_region)
+                    edges_tensor = torch.tensor(edges, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device) / 255.0
+
+                    with torch.no_grad():
+                        output = model(edges_tensor)
+                        predicted_label = torch.argmax(output).item()
+                        emotion = emotion_labels[predicted_label]
                 else:
-                    output = model.predict([face_landmarks])
-                    print(output[0])
-                    emotion = output[0]
+                    face_landmarks = get_face_landmarks(face_region, draw=False)
+                    if len(face_landmarks) == 0:
+                        continue
+                    if face_landmarks is None:
+                        cv2.putText(frame, "No Landmarks Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    else:
+                        output = model.predict([face_landmarks])
+                        print(output[0])
+                        emotion = output[0]
+                start_time = time.time()
 
-            cv2.putText(frame, f"Emotion: {emotion}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
+        cv2.putText(frame, f"Emotion: {emotion}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         # Display the frame
         cv2.imshow("Real-Time Emotion Detection", frame)
 
-        elapsed_time = time.time() - start_time
-        remaining_time = frame_delay - elapsed_time
 
-        if remaining_time > 0:
-            # Sleep for the remaining time to maintain the frame rate
-            time.sleep(remaining_time)
 
         # Exit if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -172,7 +167,7 @@ def real_time_emotion_detection(model, device, max_fps=10):
     cap.release()
     cv2.destroyAllWindows()
 
-canny = True
+canny = False
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if canny:
     model = EmotionCNN().to(device)
