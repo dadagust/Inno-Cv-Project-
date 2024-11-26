@@ -85,8 +85,17 @@ def prepare_data():
 
     unique_labels = df['expression_label'].unique()
     num_rows = df.shape[0]
+
     print(f"Number of rows: {num_rows}")
-    # Печать уникальных значений
+
     print("Unique classes in 'expression_label':")
     for label in unique_labels:
         print(label)
+
+    num_classes = len(unique_labels)
+    print(f"Total number of unique classes: {num_classes}")
+
+    label_counts = df['expression_label'].value_counts()
+    print("Number of elements per class:")
+    for label, count in label_counts.items():
+        print(f"Class '{label}': {count}")
