@@ -1,3 +1,5 @@
+import pickle
+
 import cv2
 import torch
 import matplotlib.pyplot as plt
@@ -147,10 +149,9 @@ def real_time_emotion_detection(model, device, max_fps=10):
                 if face_landmarks is None:
                     cv2.putText(frame, "No Landmarks Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 else:
-                    output = model(torch.tensor([face_landmarks], dtype=torch.float32).to(device))
-                    print(output)
-                    predicted_label = torch.argmax(output).item()
-                    emotion = emotion_labels[predicted_label]
+                    output = model.predict([face_landmarks])
+                    print(output[0])
+                    emotion = output[0]
 
             cv2.putText(frame, f"Emotion: {emotion}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -177,7 +178,7 @@ if canny:
     model = EmotionCNN().to(device)
     model.load_state_dict(torch.load("emotion_canny_model.pth"))
 else:
-    model = EmotionClassifier(INPUT_SIZE, 5).to(device)
-    model.load_state_dict(torch.load("emotion_model.pth"))
+    with open('./model', 'rb') as f:
+        model = pickle.load(f)
 # Start real-time emotion detection
 real_time_emotion_detection(model, device)
