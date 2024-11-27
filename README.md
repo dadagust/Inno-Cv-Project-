@@ -24,4 +24,6 @@ Also, we have two python test files, for each approach.
  
 > If you want to test Face mesh, you need to run test.py script and provide path to the image as in the Canny method.
 
+You can just run main.py script, that will preprocess data and train the model
+
 weights for both models can be downloaded here: https://disk.yandex.ru/d/qeS6rFYpQOQqGg
