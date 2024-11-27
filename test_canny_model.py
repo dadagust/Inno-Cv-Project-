@@ -1,10 +1,11 @@
-import random
+import cv2
 import torch
 import matplotlib.pyplot as plt
-from torchvision.transforms.functional import to_pil_image
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 emotion_labels = {
     0: "Anger",
@@ -14,19 +15,42 @@ emotion_labels = {
     4: "Surprise"
 }
 
-def apply_canny(image, region):
-      gray_region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+def detect_face(image, gray):
+    """
+    Detect faces in the image using Haar cascades.
+    """
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    return faces
 
-      clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-      enhanced_region = clahe.apply(gray_region)
+def apply_canny_to_face(image):
+    """
+    Apply Canny edge detection to the detected face region.
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-      median_intensity = np.median(enhanced_region)
-      lower_threshold = int(max(0, 0.66 * median_intensity))
-      upper_threshold = int(min(255, 1.33 * median_intensity))
+    faces = detect_face(image, gray)
 
-      edges = cv2.Canny(enhanced_region, lower_threshold, upper_threshold)
+    if len(faces) == 0:
+        print("No face detected.")
+        return None, None
 
-      return edges, region
+    x, y, w, h = faces[0]
+    face_region = image[y:y + h, x:x + w]
+
+    face_region_resized = cv2.resize(face_region, (250, 250), interpolation=cv2.INTER_AREA)
+
+    gray_region = cv2.cvtColor(face_region_resized, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced_region = clahe.apply(gray_region)
+
+    median_intensity = np.median(enhanced_region)
+    lower_threshold = int(max(0, 0.66 * median_intensity))
+    upper_threshold = int(min(255, 1.33 * median_intensity))
+
+    edges = cv2.Canny(enhanced_region, lower_threshold, upper_threshold)
+
+    return face_region_resized, edges
 
 class EmotionCNN(nn.Module):
     def __init__(self):
@@ -46,15 +70,10 @@ class EmotionCNN(nn.Module):
         return x
 
 model = EmotionCNN().to(device)
-
-print("loading emotion_canny_model.pth")
+print("Loading emotion_canny_model.pth")
 model.load_state_dict(torch.load("emotion_canny_model.pth"))
 
 def test_image(image_path, model, device):
-    """
-    Test the model on a single image from a provided path.
-    """
-    # Load the original image
     original_image = cv2.imread(image_path)
     if original_image is None:
         print(f"Failed to load image: {image_path}")
@@ -62,39 +81,37 @@ def test_image(image_path, model, device):
 
     print(f"Original image shape: {original_image.shape}")
 
-    # Generate a dummy bounding box assuming the entire image is the face region
-    bbox = [0, 0, original_image.shape[1], original_image.shape[0]]
+    face_region, edges = apply_canny_to_face(original_image)
 
-    # Preprocess the image
-    face_region, edges = EmotionDatasetCOCO.preprocess_face(original_image, bbox)
+    if edges is None:
+        print("Skipping prediction due to no detected face.")
+        return
 
-    # Convert edges to a tensor and normalize
     edges_tensor = torch.tensor(edges, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device) / 255.0
 
-    # Pass the preprocessed tensor to the model
     model.eval()
     with torch.no_grad():
         output = model(edges_tensor)
         predicted_label = torch.argmax(output).item()
 
-    # Display the results
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     axs[0].imshow(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB))
     axs[0].set_title("Original Image")
     axs[0].axis("off")
 
-    axs[1].imshow(edges, cmap="gray")
-    axs[1].set_title("Canny Edge")
+    axs[1].imshow(cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB))
+    axs[1].set_title("Face Region")
     axs[1].axis("off")
+
+    axs[2].imshow(edges, cmap="gray")
+    axs[2].set_title("Canny Edge")
+    axs[2].axis("off")
 
     plt.suptitle(f"Prediction: {emotion_labels[predicted_label]}")
     plt.show()
     print("Model Output:", output)
 
 
-
-
-
+#out image into folder and change name here
 image_path = "sample.jpg"
-
 test_image(image_path, model, device)
