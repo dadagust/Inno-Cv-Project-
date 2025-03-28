@@ -27,3 +27,11 @@ Also, we have two python test files, for each approach.
 You can just run main.py script, that will preprocess data and train the model
 
 weights for both models can be downloaded here: https://disk.yandex.ru/d/qeS6rFYpQOQqGg
+
+Face mash approach input example
+
+![image](https://github.com/user-attachments/assets/a053adbd-3357-4265-a59d-36d824082fd1)
+
+Canny edgea pproach input example
+
+![image](https://github.com/user-attachments/assets/e321146f-ad0c-480d-93d1-3d0500dad08f)
