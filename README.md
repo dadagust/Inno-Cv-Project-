@@ -32,6 +32,6 @@ Face mash approach input example
 
 ![image](https://github.com/user-attachments/assets/a053adbd-3357-4265-a59d-36d824082fd1)
 
-Canny edgea pproach input example
+Canny edge approach input example
 
 ![image](https://github.com/user-attachments/assets/e321146f-ad0c-480d-93d1-3d0500dad08f)
